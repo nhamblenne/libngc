@@ -16,12 +16,12 @@ void tracer(void *block)
 
 int main()
 {
-    ngc_register_trace_function(tracer);
+    ngc_register_trace_function(ngc_trace_func1, tracer);
     void *a = ngc_alloc(10, ngc_dont_trace);
     ngc_set_root(a);
     void *b = ngc_alloc(20, ngc_dont_trace);
     ngc_set_root(b);
-    void **c = ngc_alloc(123, ngc_trace_func);
+    void **c = ngc_alloc(123, ngc_trace_func1);
     ngc_set_root(c);
     void *d = ngc_alloc(0xfff00, ngc_dont_trace);
     printf("a = %18p\n", a);

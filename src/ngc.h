@@ -24,7 +24,10 @@ typedef void (*ngc_trace_function)(void*);
  */
 enum ngc_policy {
     ngc_dont_trace = 1, /*<< allocated block should not be traced */
-    ngc_trace_func      /*<< allocated block should be traced by the global trace function */
+    ngc_trace_func1,    /*<< allocated block should be traced by the first global trace function */
+    ngc_trace_func2,    /*<< allocated block should be traced by the second global trace function */
+    ngc_trace_func3,    /*<< allocated block should be traced by the third global trace function */
+    ngc_trace_func4     /*<< allocated block should be traced by the fourth global trace function */
 };
 
 /** allocation function.
@@ -38,10 +41,11 @@ void* ngc_alloc(size_t, enum ngc_policy);
  */
 void ngc_register_root_tracer(ngc_root_tracer, void*);
 
-/** register a function used to trace allocated memory.  Only one such
- *  function can be registered.
+/** register a function used to trace allocated memory.  Four such
+ *  functions can be registered, they are identified by the policy
+ *  to use when allocating a block they should trace.
  */
-void ngc_register_trace_function(ngc_trace_function);
+void ngc_register_trace_function(enum ngc_policy, ngc_trace_function);
 
 /** mark allocated memory as living. Has to be called by registered
  *  tracers.

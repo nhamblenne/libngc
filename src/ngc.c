@@ -46,7 +46,7 @@ static size_t max_roots = 0;
 static const size_t init_max_roots = 16;
 static struct block_header **roots = NULL;
 
-static ngc_trace_function tracer_function = NULL;
+static ngc_trace_function tracer_functions[ngc_trace_func4 - ngc_trace_func1 + 1] = { NULL };
 static size_t num_root_tracers = 0;
 static size_t max_root_tracers = 0;
 static const size_t init_max_root_tracers = 16;
@@ -193,9 +193,13 @@ void ngc_register_root_tracer(ngc_root_tracer tracer, void *user_data)
     ++num_root_tracers;
 }
 
-void ngc_register_trace_function(ngc_trace_function tracer)
-{
-    tracer_function = tracer;
+void ngc_register_trace_function(enum ngc_policy policy, ngc_trace_function tracer) {
+    if (ngc_trace_func1 <= policy && policy <= ngc_trace_func4) {
+        tracer_functions[policy - ngc_trace_func1] = tracer;
+    } else {
+        fprintf(stderr, "Bad policy for ngc_register_trace_function\n");
+        abort();
+    }
 }
 
 void ngc_mark(void *block)
@@ -210,7 +214,10 @@ void ngc_mark(void *block)
         switch (GET_POLICY(header->size)) {
             case ngc_dont_trace:
                 break;
-            case ngc_trace_func:
+            case ngc_trace_func1:
+            case ngc_trace_func2:
+            case ngc_trace_func3:
+            case ngc_trace_func4:
                 header->next = grey_list;
                 grey_list = header;
         }
@@ -250,9 +257,12 @@ static void mark_grey_list()
         switch (GET_POLICY(header->size)) {
             case ngc_dont_trace:
                 break;
-            case ngc_trace_func:
-                if (tracer_function != NULL) {
-                    tracer_function(header + 1);
+            case ngc_trace_func1:
+            case ngc_trace_func2:
+            case ngc_trace_func3:
+            case ngc_trace_func4:
+                if (tracer_functions[GET_POLICY(header->size) - ngc_trace_func1] != NULL) {
+                    tracer_functions[GET_POLICY(header->size) - ngc_trace_func1](header + 1);
                 }
                 break;
         }
