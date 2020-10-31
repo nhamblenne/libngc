@@ -17,8 +17,8 @@ struct block_header {
 
 struct extended_header {
     struct block_header header;
+    size_t size;
     void* info;
-    size_t padding;
 };
 
 struct root_tracer_record {
@@ -121,8 +121,8 @@ static void *allocate(size_t sz, enum ngc_policy policy, void* policy_info)
                     return current + 1;
                 } else {
                     struct extended_header *block = (struct extended_header *) current;
+                    block->size = current->size;
                     block->info = policy_info;
-                    block->padding = 0;
                     return block + 1;
                 }
             }
@@ -247,6 +247,9 @@ void ngc_mark(void *block)
     }
     struct block_header *header = block;
     --header;
+    if (GET_POLICY(header->size) >= ngc_block_tracer) {
+        --header;
+    }
     if (! IS_MARKED(header->size)) {
         header->size = SET_MARK(header->size);
         switch (GET_POLICY(header->size)) {
