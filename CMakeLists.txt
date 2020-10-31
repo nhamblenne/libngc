@@ -1,7 +1,16 @@
+#######################################################################
+# CMakeLists.txt
+# Copyright (c) 2020 Nicolas Ivan Hamblenne
+#######################################################################
+
 cmake_minimum_required(VERSION 3.5)
 project(libngc C)
+
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
+
+set(CMAKE_DEBUG_POSTFIX _g)
 
 option(DevMode "Development mode" OFF)
 string(REGEX REPLACE "(.*)/[^/]*" "\\1" DEV_ROOT "${PROJECT_SOURCE_DIR}")
@@ -14,7 +23,8 @@ else()
         set(CMAKE_INSTALL_PREFIX "/opt/nih" CACHE PATH "Install prefix" FORCE)
     endif()
 endif()
-list(INSERT CMAKE_PREFIX_PATH 0 "${CMAKE_INSTALL_PREFIX}")
 
 add_subdirectory(src)
-add_subdirectory(tests)
+if(DevMode)
+    add_subdirectory(tests)
+endif()
