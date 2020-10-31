@@ -15,6 +15,12 @@ struct block_header {
     struct block_header *next;
 };
 
+struct extended_header {
+    struct block_header header;
+    void* info;
+    size_t padding;
+};
+
 struct root_tracer_record {
     ngc_root_tracer tracer;
     void* user_data;
@@ -29,6 +35,7 @@ struct root_tracer_record {
 
 static const size_t header_size = sizeof(struct block_header);
 typedef char header_size_must_be_16[sizeof(struct block_header) == 16 ? 1 : -1];
+typedef char extended_header_size_must_be_32[sizeof(struct extended_header) == 32 ? 1 : -1];
 static const size_t minimum_chunk_size = 1024 * 1024;
 
 static struct block_header *first_chunk = NULL;
@@ -66,7 +73,7 @@ static void *get_core(size_t sz)
     return result;
 }
 
-static void *allocate(size_t sz, enum ngc_policy policy)
+static void *allocate(size_t sz, enum ngc_policy policy, void* policy_info)
 {
     struct block_header *current = current_free;
     struct block_header *prev = prev_free;
@@ -80,19 +87,23 @@ static void *allocate(size_t sz, enum ngc_policy policy)
         prev = NULL;
     }
 
-    if (current != NULL && available >= sz + header_size) {
+    size_t header_overhead = 1;
+    if (policy > ngc_trace_func4) {
+        ++header_overhead;
+    }
+    if (current != NULL && available >= sz + header_overhead) {
         do {
-            if (current->size >= sz + 3 * header_size) {
-                struct block_header *new_block = current + num_headers + 1;
-                new_block->size = current->size - sz - header_size;
+            if (current->size >= sz + (header_overhead + 2) * header_size) {
+                struct block_header *new_block = current + num_headers + header_overhead;
+                new_block->size = current->size - sz - header_overhead * header_size;
                 new_block->next = current->next;
-                current->size = sz + header_size;
+                current->size = sz + header_size * header_overhead;
                 current->next = new_block;
                 if (current == last_free) {
                     last_free = new_block;
                 }
             }
-            if (current->size >= sz + header_size) {
+            if (current->size >= sz + header_size * header_overhead) {
                 if (current == last_free) {
                     last_free = prev;
                 }
@@ -106,7 +117,14 @@ static void *allocate(size_t sz, enum ngc_policy policy)
                 current->next = NULL;
                 current->size = SET_POLICY(current->size, policy);
                 available -= CLEAR_ALL(current->size);
-                return current + 1;
+                if (policy <= ngc_trace_func4) {
+                    return current + 1;
+                } else {
+                    struct extended_header *block = (struct extended_header *) current;
+                    block->info = policy_info;
+                    block->padding = 0;
+                    return block + 1;
+                }
             }
             prev = current;
             current = current->next;
@@ -156,9 +174,9 @@ static void expand_memory(size_t sz)
     last_free = new_block;
 }
 
-void *ngc_alloc(size_t sz, enum ngc_policy policy)
+static void *alloc_with_extension(size_t sz, enum ngc_policy policy, void *policy_info)
 {
-    void *result = allocate(sz, policy);
+    void *result = allocate(sz, policy, policy_info);
 
     if (result == NULL) {
         size_t available_before_collection = available;
@@ -168,14 +186,34 @@ void *ngc_alloc(size_t sz, enum ngc_policy policy)
         if (collected < minimum_chunk_size/16 || collected < sz + header_size) {
             expand_memory(sz);
         }
-        result = allocate(sz, policy);
+        result = allocate(sz, policy, policy_info);
         if (result == NULL) {
             expand_memory(sz);
-            result = allocate(sz, policy);
+            result = allocate(sz, policy, policy_info);
         }
     }
 
     return result;
+}
+
+void *ngc_alloc(size_t sz, enum ngc_policy policy)
+{
+    if (ngc_dont_trace <= policy && policy <= ngc_trace_func4) {
+        return alloc_with_extension(sz, policy, NULL);
+    } else {
+        fprintf(stderr, "Bad policy passed to ngc_alloc\n");
+        abort();
+    }
+}
+
+void *ngc_alloc_with_tracer(size_t sz, ngc_trace_function tracer)
+{
+    return alloc_with_extension(sz, ngc_block_tracer, tracer);
+}
+
+void *ngc_alloc_with_info(size_t sz, struct ngc_policy_info *policy_info)
+{
+    return alloc_with_extension(sz, ngc_extended_policy, policy_info);
 }
 
 void ngc_register_root_tracer(ngc_root_tracer tracer, void *user_data)
@@ -218,8 +256,11 @@ void ngc_mark(void *block)
             case ngc_trace_func2:
             case ngc_trace_func3:
             case ngc_trace_func4:
+            case ngc_block_tracer:
+            case ngc_extended_policy:
                 header->next = grey_list;
                 grey_list = header;
+                break;
         }
     }
 }
@@ -265,6 +306,24 @@ static void mark_grey_list()
                     tracer_functions[GET_POLICY(header->size) - ngc_trace_func1](header + 1);
                 }
                 break;
+            case ngc_block_tracer:
+            {
+                struct extended_header *eheader = (struct extended_header*)header;
+                ngc_trace_function tracer = (ngc_trace_function)eheader->info;
+                if (tracer != NULL) {
+                    tracer(eheader + 1);
+                }
+                break;
+            }
+            case ngc_extended_policy:
+            {
+                struct extended_header *eheader = (struct extended_header*)header;
+                struct ngc_policy_info *info = (struct ngc_policy_info*)eheader->info;
+                if (info != NULL && info->tracer != NULL) {
+                    info->tracer(eheader + 1);
+                }
+                break;
+            }
         }
     }
 }
@@ -284,22 +343,30 @@ static void mark_all()
 static void sweep_all()
 {
     for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
-        for (struct block_header *block = chunk + 1;
-             block < chunk + chunk->size / header_size;
-             block = block + block->size / header_size)
+        struct block_header *end_chunk = chunk + chunk->size / header_size;
+        for (struct block_header *header = chunk + 1;
+             header < end_chunk;
+             header = header + header->size / header_size)
         {
-            if (IS_MARKED(block->size)) {
-                block->size = CLEAR_MARK(block->size);
-            } else if (GET_POLICY(block->size) != 0) {
-                block->size = CLEAR_ALL(block->size);
-                available += block->size;
-                block->next = NULL;
-                if (last_free == NULL) {
-                    free_list = block;
-                } else {
-                    last_free->next = block;
+            if (IS_MARKED(header->size)) {
+                header->size = CLEAR_MARK(header->size);
+            } else if (GET_POLICY(header->size) != 0) {
+                if (GET_POLICY(header->size) == ngc_extended_policy) {
+                    struct extended_header *eheader = (struct extended_header*)header;
+                    struct ngc_policy_info *info = (struct ngc_policy_info*)eheader->info;
+                    if (info != NULL && info->finalizer != NULL) {
+                        info->finalizer(eheader + 1);
+                    }
                 }
-                last_free = block;
+                header->size = CLEAR_ALL(header->size);
+                available += header->size;
+                header->next = NULL;
+                if (last_free == NULL) {
+                    free_list = header;
+                } else {
+                    last_free->next = header;
+                }
+                last_free = header;
             }
         }
     }

@@ -15,24 +15,39 @@
  */
 typedef void (*ngc_root_tracer)(void*);
 
-/** type of functions used to trace allocated object.  Only one
- *  such function can be registered.
+/** type of functions used to trace allocated object.  Four global
+ *  tracer can be registered, and it is possible to specify a block
+ *  specific tracer at allocation time.
  */
 typedef void (*ngc_trace_function)(void*);
+
+/** type of functions used to finalize allocated object.
+ */
+typedef void (*ngc_finalize_function)(void*);
 
 /** policy to apply for tracing the result of an allocation.
  */
 enum ngc_policy {
-    ngc_dont_trace = 1, /*<< allocated block should not be traced */
+    ngc_free_block,     /*<< used to mark free block */
+    ngc_dont_trace,     /*<< allocated block should not be traced */
     ngc_trace_func1,    /*<< allocated block should be traced by the first global trace function */
     ngc_trace_func2,    /*<< allocated block should be traced by the second global trace function */
     ngc_trace_func3,    /*<< allocated block should be traced by the third global trace function */
-    ngc_trace_func4     /*<< allocated block should be traced by the fourth global trace function */
+    ngc_trace_func4,    /*<< allocated block should be traced by the fourth global trace function */
+    ngc_block_tracer,   /*<< allocated block should be traced by the provided trace function */
+    ngc_extended_policy /*<< allocated block should be handled by the provided policy descriptor */
+};
+
+struct ngc_policy_info {
+    ngc_trace_function    tracer;
+    ngc_finalize_function finalizer;
 };
 
 /** allocation function.
  */
-void* ngc_alloc(size_t, enum ngc_policy);
+void *ngc_alloc(size_t, enum ngc_policy);
+void *ngc_alloc_with_tracer(size_t sz, ngc_trace_function);
+void *ngc_alloc_with_info(size_t sz, struct ngc_policy_info *policy_info);
 
 /** register a function used to trace root objects.  The void*
  *  parameter will be given back to the function. Several roots
