@@ -52,6 +52,10 @@ static size_t max_root_tracers = 0;
 static const size_t init_max_root_tracers = 16;
 static struct root_tracer_record *root_tracers = NULL;
 
+static size_t allocated = 0;
+static size_t available = 0;
+static size_t available_after_last_collect = 0;
+
 static void *get_core(size_t sz)
 {
     void *result = malloc(sz);
@@ -76,7 +80,7 @@ static void *allocate(size_t sz, enum ngc_policy policy)
         prev = NULL;
     }
 
-    if (current != NULL) {
+    if (current != NULL && available >= sz + header_size) {
         do {
             if (current->size >= sz + 3 * header_size) {
                 struct block_header *new_block = current + num_headers + 1;
@@ -101,6 +105,7 @@ static void *allocate(size_t sz, enum ngc_policy policy)
                 current_free = current->next;
                 current->next = NULL;
                 current->size = SET_POLICY(current->size, policy);
+                available -= CLEAR_ALL(current->size);
                 return current + 1;
             }
             prev = current;
@@ -130,6 +135,8 @@ static void expand_memory(size_t sz)
 
     struct block_header *new_block = new_chunk + 1;
     size_t block_size = chunk_size - header_size;
+    allocated += chunk_size;
+    available += block_size;
     uintptr_t block_ptr = (uintptr_t)new_block;
     if (block_ptr % 16 != 0) {
         uintptr_t offset = 16 - block_ptr % 16;
@@ -154,13 +161,18 @@ void *ngc_alloc(size_t sz, enum ngc_policy policy)
     void *result = allocate(sz, policy);
 
     if (result == NULL) {
-        ngc_collect(true);
-        result = allocate(sz, policy);
-    }
+        size_t available_before_collection = available;
 
-    if (result == NULL) {
-        expand_memory(sz);
+        ngc_collect(true);
+        size_t collected = available - available_before_collection;
+        if (collected < minimum_chunk_size/16 || collected < sz + header_size) {
+            expand_memory(sz);
+        }
         result = allocate(sz, policy);
+        if (result == NULL) {
+            expand_memory(sz);
+            result = allocate(sz, policy);
+        }
     }
 
     return result;
@@ -270,6 +282,7 @@ static void sweep_all()
                 block->size = CLEAR_MARK(block->size);
             } else if (GET_POLICY(block->size) != 0) {
                 block->size = CLEAR_ALL(block->size);
+                available += block->size;
                 block->next = NULL;
                 if (last_free == NULL) {
                     free_list = block;
@@ -284,8 +297,11 @@ static void sweep_all()
 
 void ngc_collect(bool force)
 {
-    mark_all();
-    sweep_all();
+    if (force || available_after_last_collect < available + minimum_chunk_size / 16) {
+        mark_all();
+        sweep_all();
+        available_after_last_collect = available;
+    }
 }
 
 void ngc_debug(FILE *f)
@@ -293,6 +309,8 @@ void ngc_debug(FILE *f)
     fprintf(f, "\nNGC Memory map\n\n");
     fprintf(f, "header_size:        %#zx\n", header_size);
     fprintf(f, "minimum_chunk_size: %#zx\n\n", minimum_chunk_size);
+
+    fprintf(f, "available/allocated: %zd/%zd\n\n", available, allocated);
 
     fprintf(f, "first_chunk:  %18p\n", first_chunk);
     fprintf(f, "last_chunk:   %18p\n", last_chunk);
