@@ -11,3 +11,6 @@ target_link_libraries(test2 ngc)
 
 add_executable(test3 test3.c)
 target_link_libraries(test3 ngc)
+
+add_executable(test4 test4.c)
+target_link_libraries(test4 ngc)

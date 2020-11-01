@@ -333,7 +333,7 @@ static void mark_grey_list()
 
 static void mark_all()
 {
-    for (size_t i = 0; i < max_root_tracers; ++i) {
+    for (size_t i = 0; i < num_root_tracers; ++i) {
         root_tracers[i].tracer(root_tracers[i].user_data);
         mark_grey_list();
     }
