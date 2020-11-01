@@ -37,11 +37,14 @@ int main()
     ngc_unset_root(a);
     ngc_unset_root(b);
     ngc_debug(stdout);
+
     ngc_collect(true);
     ngc_debug(stdout);
+
     a = ngc_alloc(4, ngc_dont_trace);
     printf("a = %18p\n", a);
     ngc_debug(stdout);
+
     ngc_unset_root(c);
     ngc_collect(true);
     ngc_debug(stdout);

@@ -348,6 +348,7 @@ static void sweep_all()
     available = 0;
     free_list = NULL;
     last_free = NULL;
+    current_free = NULL;
     for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
         struct block_header *end_chunk = chunk + chunk->size / header_size;
         for (struct block_header *header = chunk + 1;
@@ -390,13 +391,90 @@ void ngc_collect(bool force)
     }
 }
 
-void ngc_debug(FILE *f)
+int ngc_consistency_check(FILE* f)
+{
+    int num_errors = 0;
+
+    // check that all blocks are unmarked and check some sums
+    size_t allocated_by_chunks = 0;
+    size_t allocated_by_blocks = 0;
+    size_t free_by_blocks = 0;
+    size_t num_chunks = 0;
+    for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
+        allocated_by_chunks += chunk->size;
+        ++num_chunks;
+        for (struct block_header *block = chunk + 1;
+             block < chunk + chunk->size / header_size;
+             block = block + block->size / header_size)
+        {
+            allocated_by_blocks += CLEAR_ALL(block->size);
+            if (IS_MARKED(block->size)) {
+                fprintf(f, "block at %p is marked\n", block);
+                ++num_errors;
+            }
+            if (GET_POLICY(block->size) == ngc_free_block) {
+                free_by_blocks += CLEAR_ALL(block->size);
+            }
+        }
+    }
+    if (allocated_by_chunks != allocated) {
+        fprintf(f, "allocated (%zu) != allocated_by_chunks(%zu)\n", allocated, allocated_by_chunks);
+        ++num_errors;
+    }
+    if (allocated_by_blocks + num_chunks * header_size != allocated) {
+        fprintf(f, "allocated (%zu) != allocated_by_blocks(%zu)\n", allocated, allocated_by_blocks);
+        ++num_errors;
+    }
+    if (free_by_blocks != available) {
+        fprintf(f, "available (%zu) != free_by_blocks(%zu)\n", available, free_by_blocks);
+        ++num_errors;
+    }
+
+    // check that the free list contains all free blocks
+    free_by_blocks = 0;
+    for (struct block_header *current = free_list; current != NULL; current = current->next) {
+        if (GET_POLICY(current->size) != ngc_free_block) {
+            fprintf(f, "block at %p is in free list and not marked as free\n", current);
+        }
+        current->size = SET_MARK(current->size);
+        free_by_blocks += CLEAR_ALL(current->size);
+    }
+    if (free_by_blocks != available) {
+        fprintf(f, "available (%zu) != size in free list (%zu)\n", available, free_by_blocks);
+        ++num_errors;
+    }
+
+    // second pass on all the block
+    for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
+        for (struct block_header *block = chunk + 1;
+             block < chunk + chunk->size / header_size;
+             block = block + block->size / header_size)
+        {
+            if (IS_MARKED(block->size)) {
+                block->size = CLEAR_MARK(block->size);
+            } else if (GET_POLICY(block->size) == ngc_free_block) {
+                fprintf(f, "block at %p marked as free but not in free list\n", block);
+                ++num_errors;
+            }
+            if (GET_POLICY(block->size) != ngc_free_block
+                && block->next != NULL)
+            {
+                fprintf(f, "allocated block at %p has a next pointer\n", block);
+                ++num_errors;
+            }
+        }
+    }
+
+    return num_errors;
+}
+
+void ngc_dump(FILE *f)
 {
     fprintf(f, "\nNGC Memory map\n\n");
     fprintf(f, "header_size:        %#zx\n", header_size);
     fprintf(f, "minimum_chunk_size: %#zx\n\n", minimum_chunk_size);
 
-    fprintf(f, "available/allocated: %zd/%zd\n\n", available, allocated);
+    fprintf(f, "available/allocated: %zu/%zu\n\n", available, allocated);
 
     fprintf(f, "first_chunk:  %18p\n", first_chunk);
     fprintf(f, "last_chunk:   %18p\n", last_chunk);
@@ -415,4 +493,10 @@ void ngc_debug(FILE *f)
         }
         fprintf(f, "\n");
     }
+}
+
+void ngc_debug(FILE* f)
+{
+    ngc_dump(f);
+    ngc_consistency_check(f);
 }
