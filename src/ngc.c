@@ -345,6 +345,9 @@ static void mark_all()
 
 static void sweep_all()
 {
+    available = 0;
+    free_list = NULL;
+    last_free = NULL;
     for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
         struct block_header *end_chunk = chunk + chunk->size / header_size;
         for (struct block_header *header = chunk + 1;
@@ -353,7 +356,7 @@ static void sweep_all()
         {
             if (IS_MARKED(header->size)) {
                 header->size = CLEAR_MARK(header->size);
-            } else if (GET_POLICY(header->size) != 0) {
+            } else {
                 if (GET_POLICY(header->size) == ngc_extended_policy) {
                     struct extended_header *eheader = (struct extended_header*)header;
                     struct ngc_policy_info *info = (struct ngc_policy_info*)eheader->info;
@@ -366,10 +369,13 @@ static void sweep_all()
                 header->next = NULL;
                 if (last_free == NULL) {
                     free_list = header;
-                } else {
+                    last_free = header;
+                } else if (header != last_free + last_free->size / header_size){
                     last_free->next = header;
+                    last_free = header;
+                } else {
+                    last_free->size += header->size;
                 }
-                last_free = header;
             }
         }
     }
