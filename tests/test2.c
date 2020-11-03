@@ -23,10 +23,6 @@ int main()
     void **c = ngc_alloc_with_tracer(123, tracer);
     ngc_set_root(c);
     void *d = ngc_alloc(0xfff00, ngc_dont_trace);
-    printf("a = %18p\n", a);
-    printf("b = %18p\n", b);
-    printf("c = %18p\n", c);
-    printf("d = %18p\n", d);
     *c = a;
     ngc_unset_root(a);
     ngc_unset_root(b);
@@ -36,6 +32,5 @@ int main()
     ngc_debug(stdout);
 
     a = ngc_alloc(4, ngc_dont_trace);
-    printf("a = %18p\n", a);
     ngc_debug(stdout);
 }

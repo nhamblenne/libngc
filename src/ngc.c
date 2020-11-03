@@ -468,7 +468,7 @@ int ngc_consistency_check(FILE* f)
     return num_errors;
 }
 
-void ngc_dump(FILE *f)
+void ngc_debug_dump(FILE *f)
 {
     fprintf(f, "\nNGC Memory map\n\n");
     fprintf(f, "header_size:        %#zx\n", header_size);
@@ -495,8 +495,66 @@ void ngc_dump(FILE *f)
     }
 }
 
+struct block_header *find_chunk(struct block_header *block, int *chunk_number_ptr)
+{
+    int result = 0;
+    for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next)
+    {
+        if (chunk <= block && block < chunk + chunk->size / header_size) {
+            if (chunk_number_ptr != NULL) {
+                *chunk_number_ptr= result;
+            }
+            return chunk;
+        }
+        ++result;
+    }
+    if (chunk_number_ptr != NULL) {
+        *chunk_number_ptr = -1;
+    }
+    return NULL;
+}
+
+void ngc_test_dump(FILE *f)
+{
+    int display_chunk_number;
+    struct block_header *display_chunk;
+    fprintf(f, "\nNGC Memory map\n\n");
+    fprintf(f, "header_size:        %#zx\n", header_size);
+    fprintf(f, "minimum_chunk_size: %#zx\n\n", minimum_chunk_size);
+
+    fprintf(f, "available/allocated: %zu/%zu\n\n", available, allocated);
+
+    display_chunk = find_chunk(free_list, &display_chunk_number);
+    fprintf(f, "free_list:    %3d + %18zx\n", display_chunk_number, (char*)free_list - (char*)display_chunk);
+    display_chunk = find_chunk(prev_free, &display_chunk_number);
+    fprintf(f, "prev_free:    %3d + %18zx\n", display_chunk_number, (char*)prev_free - (char*)display_chunk);
+    display_chunk = find_chunk(current_free, &display_chunk_number);
+    fprintf(f, "current_free: %3d + %18zx\n", display_chunk_number, (char*)current_free - (char*)display_chunk);
+    display_chunk = find_chunk(last_free, &display_chunk_number);
+    fprintf(f, "last_free:    %3d + %18zx\n\n", display_chunk_number, (char*)last_free - (char*)display_chunk);
+
+    int chunk_number = 0;
+    for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
+        fprintf(f, "Chunk %3d, size: %#8zx\n", chunk_number, chunk->size);
+        ++chunk_number;
+        for (struct block_header *block = chunk + 1;
+             block < chunk + chunk->size / header_size;
+             block = block + block->size / header_size)
+        {
+            display_chunk = find_chunk(block->next, &display_chunk_number);
+            fprintf(f, "Block at %18zx, size: %#8zx, next: %3d + %18zx\n", (char*)block - (char*)chunk, block->size,
+                    display_chunk_number, (char*)(block->next) - (char*) display_chunk);
+        }
+        fprintf(f, "\n");
+    }
+}
+
 void ngc_debug(FILE* f)
 {
-    ngc_dump(f);
+    if (getenv("NGC_DEBUG_DUMP") != NULL) {
+        ngc_debug_dump(f);
+    } else {
+        ngc_test_dump(f);
+    }
     ngc_consistency_check(f);
 }

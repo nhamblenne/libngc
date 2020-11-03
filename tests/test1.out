@@ -1,0 +1,57 @@
+
+NGC Memory map
+
+header_size:        0x10
+minimum_chunk_size: 0x100000
+
+available/allocated: 0/1048576
+
+free_list:     -1 +                  0
+prev_free:     -1 +                  0
+current_free:  -1 +                  0
+last_free:     -1 +                  0
+
+Chunk   0, size: 0x100000
+Block at                 10, size:     0x22, next:  -1 +                  0
+Block at                 30, size:     0x32, next:  -1 +                  0
+Block at                 60, size:     0x94, next:  -1 +                  0
+Block at                 f0, size:  0xfff12, next:  -1 +                  0
+
+
+NGC Memory map
+
+header_size:        0x10
+minimum_chunk_size: 0x100000
+
+available/allocated: 1048384/1048576
+
+free_list:      0 +                 30
+prev_free:     -1 +                  0
+current_free:  -1 +                  0
+last_free:      0 +                 f0
+
+Chunk   0, size: 0x100000
+Block at                 10, size:     0x22, next:  -1 +                  0
+Block at                 30, size:     0x30, next:   0 +                 f0
+Block at                 60, size:     0x94, next:  -1 +                  0
+Block at                 f0, size:  0xfff10, next:  -1 +                  0
+
+
+NGC Memory map
+
+header_size:        0x10
+minimum_chunk_size: 0x100000
+
+available/allocated: 1048336/1048576
+
+free_list:      0 +                 f0
+prev_free:     -1 +                  0
+current_free:   0 +                 f0
+last_free:      0 +                 f0
+
+Chunk   0, size: 0x100000
+Block at                 10, size:     0x22, next:  -1 +                  0
+Block at                 30, size:     0x32, next:  -1 +                  0
+Block at                 60, size:     0x94, next:  -1 +                  0
+Block at                 f0, size:  0xfff10, next:  -1 +                  0
+

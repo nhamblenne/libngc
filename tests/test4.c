@@ -26,6 +26,7 @@ void trace_roots(void *dummy)
 
 int main()
 {
+    ngc_register_trace_function(ngc_trace_func1, tracer);
     ngc_register_root_tracer(trace_roots, NULL);
     a = ngc_alloc(10, ngc_dont_trace);
     ngc_set_root(a);
@@ -34,10 +35,6 @@ int main()
     c = ngc_alloc(123, ngc_trace_func1);
     *c = NULL;
     d = ngc_alloc(0xfff00, ngc_dont_trace);
-    printf("a = %18p\n", a);
-    printf("b = %18p\n", b);
-    printf("c = %18p\n", c);
-    printf("d = %18p\n", d);
     *c = a;
     ngc_unset_root(a);
     ngc_unset_root(b);
@@ -48,6 +45,5 @@ int main()
     ngc_debug(stdout);
 
     a = ngc_alloc(4, ngc_dont_trace);
-    printf("a = %18p\n", a);
     ngc_debug(stdout);
 }
