@@ -15,10 +15,15 @@ struct block_header {
     struct block_header *next;
 };
 
+union extended_info {
+    ngc_trace_function trace_function;
+    struct ngc_policy_info* policy_info;
+};
+
 struct extended_header {
     struct block_header header;
     size_t size;
-    void* info;
+    union extended_info info;
 };
 
 struct root_tracer_record {
@@ -73,7 +78,7 @@ static void *get_core(size_t sz)
     return result;
 }
 
-static void *allocate(size_t sz, enum ngc_policy policy, void* policy_info)
+static void *allocate(size_t sz, enum ngc_policy policy, union extended_info policy_info)
 {
     struct block_header *current = current_free;
     struct block_header *prev = prev_free;
@@ -174,7 +179,7 @@ static void expand_memory(size_t sz)
     last_free = new_block;
 }
 
-static void *alloc_with_extension(size_t sz, enum ngc_policy policy, void *policy_info)
+static void *alloc_with_extension(size_t sz, enum ngc_policy policy, union extended_info policy_info)
 {
     void *result = allocate(sz, policy, policy_info);
 
@@ -199,7 +204,7 @@ static void *alloc_with_extension(size_t sz, enum ngc_policy policy, void *polic
 void *ngc_alloc(size_t sz, enum ngc_policy policy)
 {
     if (ngc_dont_trace <= policy && policy <= ngc_trace_func4) {
-        return alloc_with_extension(sz, policy, NULL);
+        return alloc_with_extension(sz, policy, (union extended_info) { NULL });
     } else {
         fprintf(stderr, "Bad policy passed to ngc_alloc\n");
         abort();
@@ -208,12 +213,12 @@ void *ngc_alloc(size_t sz, enum ngc_policy policy)
 
 void *ngc_alloc_with_tracer(size_t sz, ngc_trace_function tracer)
 {
-    return alloc_with_extension(sz, ngc_block_tracer, tracer);
+    return alloc_with_extension(sz, ngc_block_tracer, (union extended_info){ tracer });
 }
 
 void *ngc_alloc_with_info(size_t sz, struct ngc_policy_info *policy_info)
 {
-    return alloc_with_extension(sz, ngc_extended_policy, policy_info);
+    return alloc_with_extension(sz, ngc_extended_policy, (union extended_info){ .policy_info = policy_info });
 }
 
 void ngc_register_root_tracer(ngc_root_tracer tracer, void *user_data)
@@ -312,7 +317,7 @@ static void mark_grey_list()
             case ngc_block_tracer:
             {
                 struct extended_header *eheader = (struct extended_header*)header;
-                ngc_trace_function tracer = (ngc_trace_function)eheader->info;
+                ngc_trace_function tracer = eheader->info.trace_function;
                 if (tracer != NULL) {
                     tracer(eheader + 1);
                 }
@@ -321,7 +326,7 @@ static void mark_grey_list()
             case ngc_extended_policy:
             {
                 struct extended_header *eheader = (struct extended_header*)header;
-                struct ngc_policy_info *info = (struct ngc_policy_info*)eheader->info;
+                struct ngc_policy_info *info = eheader->info.policy_info;
                 if (info != NULL && info->tracer != NULL) {
                     info->tracer(eheader + 1);
                 }
@@ -360,7 +365,7 @@ static void sweep_all()
             } else {
                 if (GET_POLICY(header->size) == ngc_extended_policy) {
                     struct extended_header *eheader = (struct extended_header*)header;
-                    struct ngc_policy_info *info = (struct ngc_policy_info*)eheader->info;
+                    struct ngc_policy_info *info = eheader->info.policy_info;
                     if (info != NULL && info->finalizer != NULL) {
                         info->finalizer(eheader + 1);
                     }
@@ -409,7 +414,7 @@ int ngc_consistency_check(FILE* f)
         {
             allocated_by_blocks += CLEAR_ALL(block->size);
             if (IS_MARKED(block->size)) {
-                fprintf(f, "block at %p is marked\n", block);
+                fprintf(f, "block at %p is marked\n", (void*) block);
                 ++num_errors;
             }
             if (GET_POLICY(block->size) == ngc_free_block) {
@@ -434,7 +439,7 @@ int ngc_consistency_check(FILE* f)
     free_by_blocks = 0;
     for (struct block_header *current = free_list; current != NULL; current = current->next) {
         if (GET_POLICY(current->size) != ngc_free_block) {
-            fprintf(f, "block at %p is in free list and not marked as free\n", current);
+            fprintf(f, "block at %p is in free list and not marked as free\n", (void*) current);
         }
         current->size = SET_MARK(current->size);
         free_by_blocks += CLEAR_ALL(current->size);
@@ -453,13 +458,13 @@ int ngc_consistency_check(FILE* f)
             if (IS_MARKED(block->size)) {
                 block->size = CLEAR_MARK(block->size);
             } else if (GET_POLICY(block->size) == ngc_free_block) {
-                fprintf(f, "block at %p marked as free but not in free list\n", block);
+                fprintf(f, "block at %p marked as free but not in free list\n", (void*) block);
                 ++num_errors;
             }
             if (GET_POLICY(block->size) != ngc_free_block
                 && block->next != NULL)
             {
-                fprintf(f, "allocated block at %p has a next pointer\n", block);
+                fprintf(f, "allocated block at %p has a next pointer\n", (void*) block);
                 ++num_errors;
             }
         }
@@ -476,20 +481,20 @@ void ngc_debug_dump(FILE *f)
 
     fprintf(f, "available/allocated: %zu/%zu\n\n", available, allocated);
 
-    fprintf(f, "first_chunk:  %18p\n", first_chunk);
-    fprintf(f, "last_chunk:   %18p\n", last_chunk);
-    fprintf(f, "free_list:    %18p\n", free_list);
-    fprintf(f, "prev_free:    %18p\n", prev_free);
-    fprintf(f, "current_free: %18p\n", current_free);
-    fprintf(f, "last_free:    %18p\n\n", last_free);
+    fprintf(f, "first_chunk:  %18p\n", (void*) first_chunk);
+    fprintf(f, "last_chunk:   %18p\n", (void*) last_chunk);
+    fprintf(f, "free_list:    %18p\n", (void*) free_list);
+    fprintf(f, "prev_free:    %18p\n", (void*) prev_free);
+    fprintf(f, "current_free: %18p\n", (void*) current_free);
+    fprintf(f, "last_free:    %18p\n\n", (void*) last_free);
 
     for (struct block_header *chunk = first_chunk; chunk != NULL; chunk = chunk->next) {
-        fprintf(f, "Chunk at %18p, size: %#8zx, next: %18p\n", chunk, chunk->size, chunk->next);
+        fprintf(f, "Chunk at %18p, size: %#8zx, next: %18p\n", (void*) chunk, chunk->size, (void*) chunk->next);
         for (struct block_header *block = chunk + 1;
              block < chunk + chunk->size / header_size;
              block = block + block->size / header_size)
         {
-            fprintf(f, "Block at %18p, size: %#8zx, next: %18p\n", block, block->size, block->next);
+            fprintf(f, "Block at %18p, size: %#8zx, next: %18p\n", (void*) block, block->size, (void*) block->next);
         }
         fprintf(f, "\n");
     }

@@ -5,6 +5,8 @@
 
 set(HEADERS ngc.h)
 add_library(ngc ngc.c)
+set_project_warnings(ngc PRIVATE)
+
 target_include_directories(ngc INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>)
