@@ -16,6 +16,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - uses: actions/checkout@master
+      with:
+      name: nhamblenne/ntt
+      ref: refs/heads/release
+    
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
 
@@ -33,4 +38,6 @@ jobs:
     - name: Test
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: ctest -C $BUILD_TYPE
+      run: |
+           env
+           ctest -C $BUILD_TYPE
