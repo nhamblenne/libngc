@@ -18,7 +18,7 @@ jobs:
 
     - uses: actions/checkout@v2
       with:
-          name: nhamblenne/ntt
+          repository: nhamblenne/ntt
     
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
@@ -39,4 +39,7 @@ jobs:
       shell: bash
       run: |
            env
+           ls $GITHUB_WORKSPACE
+           export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
+           echo $PATH           
            ctest -C $BUILD_TYPE
