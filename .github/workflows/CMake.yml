@@ -15,11 +15,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+          path: libngc
 
     - uses: actions/checkout@v2
       with:
           repository: nhamblenne/ntt
-          path: ${{runner.workspace}}/ntt
+          path: ntt
     
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
