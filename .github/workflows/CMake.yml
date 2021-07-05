@@ -24,22 +24,22 @@ jobs:
           path: ntt
     
     - name: Create Build Environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
+      run: cmake -E make_directory $GITHUB_WORKSPACE/build
 
     - name: Configure CMake
       shell: bash
-      working-directory: ${{runner.workspace}}/build
+      working-directory: $GITHUB_WORKSPACE/build
       run: |
-        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
+        cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
 
     - name: Build
-      working-directory: ${{runner.workspace}}/build
+      working-directory: $GITHUB_WORKSPACE/build
       shell: bash
       run: cmake --build . --config $BUILD_TYPE
 
     - name: Test
-      working-directory: ${{runner.workspace}}/build
+      working-directory: $GITHUB_WORKSPACE/build
       shell: bash
       run: |
-           export PATH=${{runner.workspace}}/ntt/bin:$PATH
+           export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
            ctest -C $BUILD_TYPE
