@@ -2,6 +2,9 @@
 /cmake-*/
 /.idea/
 
+# Emacs backup files
+*~
+
 # Prerequisites
 *.d
 
