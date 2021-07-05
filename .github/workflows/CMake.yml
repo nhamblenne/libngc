@@ -28,17 +28,17 @@ jobs:
 
     - name: Configure CMake
       shell: bash
-      working-directory: $GITHUB_WORKSPACE/build
+      working-directory: ${{github.workspace}}/build
       run: |
         cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
 
     - name: Build
-      working-directory: $GITHUB_WORKSPACE/build
+      working-directory: ${{github.workspace}}/build
       shell: bash
       run: cmake --build . --config $BUILD_TYPE
 
     - name: Test
-      working-directory: $GITHUB_WORKSPACE/build
+      working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
            export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
