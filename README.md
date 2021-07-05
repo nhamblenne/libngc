@@ -1,3 +1,5 @@
+![CMake](https://github.com/nhamblenne/libngc/actions/workflows/CMake/badge.svg)
+
 # NIH Garbage Collector
 
 Here is a simple mark and sweep garbage collector written in C.
