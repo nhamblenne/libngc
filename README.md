@@ -1,4 +1,4 @@
-![CMake](https://github.com/nhamblenne/libngc/actions/workflows/CMake/badge.svg)
+![CMake](https://github.com/nhamblenne/libngc/actions/workflows/CMake.yml/badge.svg)
 
 # NIH Garbage Collector
 
