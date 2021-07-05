@@ -16,10 +16,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
       with:
       name: nhamblenne/ntt
-      ref: refs/heads/release
     
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build
