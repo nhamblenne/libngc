@@ -29,7 +29,7 @@ else()
 endif()
 
 add_subdirectory(src)
-if(TEST_LIBNCL OR (CMAKE_SOURCE_DIR STREQUAL libngc_SOURCE_DIR AND DevMode))
+if(TEST_LIBNGC OR (CMAKE_SOURCE_DIR STREQUAL libngc_SOURCE_DIR AND DevMode))
     enable_testing()
     add_subdirectory(tests)
 endif()
