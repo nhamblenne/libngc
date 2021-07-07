@@ -65,4 +65,7 @@ jobs:
       shell: bash
       run: |
            export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
+           echo $PATH
+           whence ntt
+           ls $GITHUB_WORKSPACE/ntt/bin
            ctest -C $BUILD_TYPE
