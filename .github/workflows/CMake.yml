@@ -15,6 +15,7 @@ jobs:
 
     steps:
     - name: Print github workspace
+      shell: bash
       run: |
           pwd
           echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
@@ -32,6 +33,7 @@ jobs:
           path: ntt
 
     - name: Print github workspace
+      shell: bash
       run: |
           echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
           echo "github.workspace = ${{ github.workspace }}"
@@ -45,7 +47,9 @@ jobs:
       working-directory: ${{github.workspace}}
       run: |
         pwd
+        ls
         echo cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
+        [ -d build ] || mkdir build
         cd build
         cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
 
