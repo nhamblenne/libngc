@@ -39,7 +39,9 @@ jobs:
           echo "github.workspace = ${{ github.workspace }}"
           echo "pr.ref = ${{github.event.pull_request.head.ref}}"
           echo "github.ref = ${{ github.ref }}"
+          
     - name: Create Build Environment
+      shell: bash
       run: cmake -E make_directory $GITHUB_WORKSPACE/build
 
     - name: Configure CMake
