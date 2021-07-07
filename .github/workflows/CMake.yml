@@ -11,18 +11,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
 
     steps:
-    - name: Print github workspace
-      shell: bash
-      run: |
-          pwd
-          echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
-          echo "github.workspace = ${{ github.workspace }}"
-          echo "pr.ref = ${{github.event.pull_request.head.ref}}"
-          echo "github.ref = ${{ github.ref }}"
-          
     - uses: actions/checkout@v2
       with:
           path: libngc
@@ -32,28 +23,14 @@ jobs:
           repository: nhamblenne/ntt
           path: ntt
 
-    - name: Print github workspace
-      shell: bash
-      run: |
-          echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
-          echo "github.workspace = ${{ github.workspace }}"
-          echo "pr.ref = ${{github.event.pull_request.head.ref}}"
-          echo "github.ref = ${{ github.ref }}"
-          
     - name: Create Build Environment
       shell: bash
       run: cmake -E make_directory $GITHUB_WORKSPACE/build
 
     - name: Configure CMake
       shell: bash
-      working-directory: ${{github.workspace}}
-      run: |
-        pwd
-        ls
-        echo cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
-        [ -d build ] || mkdir build
-        cd build
-        cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
+      working-directory: ${{github.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
 
     - name: Build
       working-directory: ${{github.workspace}}/build
@@ -65,7 +42,4 @@ jobs:
       shell: bash
       run: |
            export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
-           echo $PATH
-           type ntt
-           ls $GITHUB_WORKSPACE/ntt/bin
            ctest -C $BUILD_TYPE
