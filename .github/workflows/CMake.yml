@@ -16,6 +16,7 @@ jobs:
     steps:
     - name: Print github workspace
       run: |
+          pwd
           echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
           echo "github.workspace = ${{ github.workspace }}"
           echo "pr.ref = ${{github.event.pull_request.head.ref}}"
@@ -45,7 +46,8 @@ jobs:
       run: |
         pwd
         echo cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
-        # cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
+        cd build
+        cmake $GITHUB_WORKSPACE/libngc -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DTEST_LIBNGC=ON
 
     - name: Build
       working-directory: ${{github.workspace}}/build
