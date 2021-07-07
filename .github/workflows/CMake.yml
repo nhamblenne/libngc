@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: Print github workspace
-        run: |
+      run: |
           echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
           echo "github.workspace = ${{ github.workspace }}"
           echo "pr.ref = ${{github.event.pull_request.head.ref}}"
@@ -29,8 +29,9 @@ jobs:
       with:
           repository: nhamblenne/ntt
           path: ntt
+
     - name: Print github workspace
-        run: |
+      run: |
           echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
           echo "github.workspace = ${{ github.workspace }}"
           echo "pr.ref = ${{github.event.pull_request.head.ref}}"
