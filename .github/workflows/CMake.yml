@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v2
@@ -42,4 +42,6 @@ jobs:
       shell: bash
       run: |
            export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
+           type ntt
+           ntt || true
            ctest -C $BUILD_TYPE
