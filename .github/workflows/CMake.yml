@@ -44,4 +44,4 @@ jobs:
            export PATH=$GITHUB_WORKSPACE/ntt/bin:$PATH
            type ntt
            ntt || true
-           ctest -C $BUILD_TYPE
+           ctest -V -C $BUILD_TYPE
