@@ -21,6 +21,7 @@ int main()
     void *b = ngc_alloc(20, ngc_dont_trace);
     ngc_set_root(b);
     void **c = ngc_alloc_with_tracer(123, tracer);
+    *c = NULL;
     ngc_set_root(c);
     void *d = ngc_alloc(0xfff00, ngc_dont_trace);
     *c = a;
