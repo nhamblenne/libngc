@@ -31,12 +31,13 @@ struct root_tracer_record {
     void* user_data;
 };
 
-#define SET_MARK(sz)           ((sz)  |   1U)
-#define CLEAR_MARK(sz)         ((sz)  &  ~1U)
-#define IS_MARKED(sz)          (((sz) &   1U) == 1U)
-#define SET_POLICY(sz, policy) (((sz) & ~14U) | ((policy) << 1U))
-#define GET_POLICY(sz)         (((sz) &  14U) >> 1U)
-#define CLEAR_ALL(sz)          ((sz)  & ~15U)
+#define SZ(sz)                 ((size_t)(sz))
+#define SET_MARK(sz)           ((sz)  |   SZ(1))
+#define CLEAR_MARK(sz)         ((sz)  &  ~SZ(1))
+#define IS_MARKED(sz)          (((sz) &   SZ(1)) == SZ(1))
+#define SET_POLICY(sz, policy) (((sz) & ~SZ(14)) | ((size_t)(policy) << 1))
+#define GET_POLICY(sz)         (((sz) &  SZ(14)) >> 1)
+#define CLEAR_ALL(sz)          ((sz)  & ~SZ(15))
 
 static const size_t header_size = sizeof(struct block_header);
 typedef char header_size_must_be_16[sizeof(struct block_header) == 16 ? 1 : -1];
@@ -96,7 +97,7 @@ static void *allocate(size_t sz, enum ngc_policy policy, union extended_info pol
     if (policy > ngc_trace_func4) {
         ++header_overhead;
     }
-    if (current != NULL && available >= sz + header_overhead) {
+    if (current != NULL && available >= sz + header_overhead * header_size) {
         do {
             if (current->size >= sz + (header_overhead + 2) * header_size) {
                 struct block_header *new_block = current + num_headers + header_overhead;
